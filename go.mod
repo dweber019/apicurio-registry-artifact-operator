@@ -1,4 +1,4 @@
-module github.com/dweber019/apicurio-artifact-operator
+module github.com/dweber019/apicurio-registry-artifact-operator
 
 go 1.15
 

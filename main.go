@@ -31,8 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	artifactv1alpha1 "github.com/dweber019/apicurio-artifact-operator/api/v1alpha1"
-	"github.com/dweber019/apicurio-artifact-operator/controllers"
+	artifactv1alpha1 "github.com/dweber019/apicurio-registry-artifact-operator/api/v1alpha1"
+	"github.com/dweber019/apicurio-registry-artifact-operator/controllers"
 	// +kubebuilder:scaffold:imports
 )
 
