@@ -1,6 +1,9 @@
 # Build the manager binary
 FROM golang:1.15 as builder
 
+LABEL Maintainer="David Weber <david.weber@w3tec.ch>"
+LABEL Description="A Kubernetes operator for the Apicurio Registry artifacts. The operator manages artifacts and not the registry"
+
 WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod
