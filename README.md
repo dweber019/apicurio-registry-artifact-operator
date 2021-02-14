@@ -44,7 +44,14 @@ To access the UI you can open a tunnel to the service. In minikube you do so wit
 Don't use this in production!!! Use something like the [Registry operator](https://operatorhub.io/operator/apicurio-registry) instead.
 
 ### Deployment
-
+To update the docker image use this command
+```
+make docker-build docker-push IMG=docker.io/dweber019/apicurio-registry-artifact-operator:v0.0.1
+```
+After this you can run with
+```
+make deploy IMG=docker.io/dweber019/memcached-operator:v0.0.1
+```
 
 ## Useful links
 - [Kubebilder](https://book.kubebuilder.io)
@@ -57,5 +64,3 @@ Don't use this in production!!! Use something like the [Registry operator](https
 -- content
 -- state
 -- Delete artifact/version handling
-- Improvements
--- Tests => https://book.kubebuilder.io/cronjob-tutorial/writing-tests.html

@@ -58,7 +58,6 @@ spec:
                 items:
                   type: string
                 type: array
-                uniqueItems: true
               name:
                 description: The name of the artifact
                 type: string

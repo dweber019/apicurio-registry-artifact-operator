@@ -18,7 +18,7 @@ package controllers
 
 import (
 	"context"
-	RegistryApi "github.com/dweber019/apicurio-artifact-operator/registry_api"
+	RegistryApi "github.com/dweber019/apicurio-registry-artifact-operator/registry_api"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"strings"
 
@@ -27,7 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	artifactv1alpha1 "github.com/dweber019/apicurio-artifact-operator/api/v1alpha1"
+	artifactv1alpha1 "github.com/dweber019/apicurio-registry-artifact-operator/api/v1alpha1"
 )
 
 // ApicurioReconciler reconciles a Apicurio object
@@ -87,7 +87,7 @@ func (r *ApicurioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		Description: &apicurioArtifact.Spec.Description,
 		Labels:      &apicurioArtifact.Spec.Labels,
 		Name:        &apicurioArtifact.Spec.Name,
-		Properties:  &RegistryApi.Properties{
+		Properties: &RegistryApi.Properties{
 			AdditionalProperties: apicurioArtifact.Spec.Properties,
 		},
 	})
@@ -141,7 +141,6 @@ func (r *ApicurioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				})
 			}
 		}
-
 
 	}
 

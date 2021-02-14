@@ -17,10 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	RegistryApi "github.com/dweber019/apicurio-artifact-operator/registry_api"
+	RegistryApi "github.com/dweber019/apicurio-registry-artifact-operator/registry_api"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
 
 // ApicurioSpec defines the desired state of Apicurio
 // +kubebuilder:printcolumn:name="Id",type=string,JSONPath=`.spec.id`
@@ -30,60 +29,59 @@ import (
 type ApicurioSpec struct {
 	// The Registry API url including the /api or even versions
 	// +kubebuilder:validation:Required
-	RegistryApiEndpoint	string			`json:"registryApiEndpoint"`
+	RegistryApiEndpoint string `json:"registryApiEndpoint"`
 
 	// The artifact id which will be the reference point for all operations towards the Registry API
 	// +kubebuilder:validation:Required
-	Id          		string			`json:"artifactId"`
+	Id string `json:"artifactId"`
 
 	// The name of the artifact
 	// +kubebuilder:validation:Required
-	Name        		string			`json:"name"`
+	Name string `json:"name"`
 
 	// The description of the artifact. This will always overwrite the content description
 	// +kubebuilder:validation:Optional
-	Description 		string			`json:"description,omitempty"`
+	Description string `json:"description,omitempty"`
 
 	// The type of the artifact
 	// +kubebuilder:default=OPENAPI
 	// +kubebuilder:validation:Required
-	Type        		ArtifactType	`json:"type"`
+	Type ArtifactType `json:"type"`
 
 	// The user which owns the artifact
 	// +kubebuilder:validation:Required
-	CreatedBy   		string			`json:"username"`
+	CreatedBy string `json:"username"`
 
 	// This are some arbitrary labels
-	// +kubebuilder:validation:UniqueItems=true
 	// +kubebuilder:validation:Optional
-	Labels      		[]string		`json:"labels,omitempty"`
+	Labels []string `json:"labels,omitempty"`
 
 	// And some arbitrary properties
 	// +kubebuilder:validation:Optional
-	Properties  		map[string]string	`json:"properties,omitempty"`
+	Properties map[string]string `json:"properties,omitempty"`
 
 	// The state of the artifact not tied to any version
 	// +kubebuilder:default=ENABLED
 	// +kubebuilder:validation:Optional
-	State				ArtifactState	`json:"state,omitempty"`
+	State ArtifactState `json:"state,omitempty"`
 
 	// This will define the validity rule
 	// +kubebuilder:default=FULL
 	// +kubebuilder:validation:Required
-	RuleValidity		ArtifactRuleValidity	`json:"ruleValidity,omitempty"`
+	RuleValidity ArtifactRuleValidity `json:"ruleValidity,omitempty"`
 
 	// This will define the compatibility rule
 	// +kubebuilder:validation:Optional
-	RuleCompatibility	ArtifactRuleCompatibility	`json:"ruleCompatibility,omitempty"`
+	RuleCompatibility ArtifactRuleCompatibility `json:"ruleCompatibility,omitempty"`
 
 	// This defines the content type of the API request, mostly json but not always
 	// +kubebuilder:default=application/json
 	// +kubebuilder:validation:Required
-	ContentType 		string			`json:"contentType,omitempty"`
+	ContentType string `json:"contentType,omitempty"`
 
 	// The content of the artifact, for an openAPI would be json
 	// +kubebuilder:validation:Required
-	Content				string			`json:"content"`
+	Content string `json:"content"`
 }
 
 // +kubebuilder:validation:Enum=AVRO;PROTOBUF;PROTOBUF_FD;JSON;KCONNECT;OPENAPI;ASYNCAPI;GRAPHQL;WSDL;XSD
