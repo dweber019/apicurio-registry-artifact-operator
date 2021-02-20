@@ -12,6 +12,18 @@ The operator will use the API provided by the Apicurio found at [https://www.api
 This implementation takes the openAPI definition of the Apicurio Registry API and converts the definition into a golang client SDK.  
 On `reconciliation` the client SDK will be used to represent the CRD defined state in the Registry.
 
+## Behavior
+### Versioning
+The version of the Apicurio registry don't correspond to the version in the content (e.g. OpenAPI version).  
+Apicurio will look at the content and decides by itself.  
+The API is configured with [RETURN_OR_UPDATE](https://www.apicur.io/registry/docs/apicurio-registry/1.3.3.Final/assets-attachments/registry-rest-api.htm#operation/createArtifact).
+
+> If you like to have control over the version yourself, it's suggested you create a artifact for each version.
+
+### Deletion
+If you delete a CRD the operator will not delete the artifact as it's possible that other parties rely on your artifact.  
+If you like physically delete the artifact you can do so by setting the metadata annotation `apicurio.artifact.operator/force-delete: "true"`.
+
 ## Development
 For development you should use `minikube` or any other possible kubernetes compatible implementation, as advised by the operator-sdk framework.
 
@@ -58,9 +70,3 @@ make deploy IMG=docker.io/dweber019/memcached-operator:v0.0.1
 - [Operator tutorial](https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/)
 - [Apicurio API reference](https://www.apicur.io/registry/docs/apicurio-registry/1.3.3.Final/assets-attachments/registry-rest-api.htm)
 - [Openapi generator for golang](https://github.com/deepmap/oapi-codegen)
-
-## Todo
-- Check versioning handling
--- content
--- state
--- Delete artifact/version handling

@@ -42,7 +42,7 @@ spec:
                 type: string
               content:
                 description: The content of the artifact, for an openAPI would be
-                  json
+                  json (content or externalContent is required)
                 type: string
               contentType:
                 default: application/json
@@ -52,6 +52,10 @@ spec:
               description:
                 description: The description of the artifact. This will always overwrite
                   the content description
+                type: string
+              externalContent:
+                description: The content of the artifact, provide a valid URL to the
+                  content (content or externalContent is required)
                 type: string
               labels:
                 description: This are some arbitrary labels
@@ -117,7 +121,6 @@ spec:
                 type: string
             required:
             - artifactId
-            - content
             - name
             - registryApiEndpoint
             - type

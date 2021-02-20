@@ -1,10 +1,10 @@
 apiVersion: artifact.w3tec.ch/v1alpha1
 kind: Apicurio
 metadata:
-  name: apicurio-sample
+  name: artifact-openapi-sample
 spec:
-  registryApiEndpoint: http://192.168.99.101:32327/api
-  artifactId: my-artifact-id
+  registryApiEndpoint: http://192.168.99.102:30199/api
+  artifactId: artifact-openapi-sample
   name: pets-api
   description: "super pets api"
   type: OPENAPI
@@ -12,7 +12,6 @@ spec:
   labels:
     - openapi
     - api
-    - swagger
   properties:
     custom1: bubu
     custom2: lala

@@ -19,7 +19,9 @@ package controllers
 import (
 	"context"
 	RegistryApi "github.com/dweber019/apicurio-registry-artifact-operator/registry_api"
+	"io/ioutil"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"net/http"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -57,33 +59,79 @@ func (r *ApicurioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	err := r.Get(ctx, req.NamespacedName, apicurioArtifact)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("Artifact resource not found. Ignoring since object must be deleted")
+			log.Info("Artifact resource not found. Ignoring since object must be deleted.")
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "Failed to get artifact")
+		log.Error(err, "Failed to get artifact.")
 		return ctrl.Result{}, err
 	}
 
+	log = log.WithValues("artifactId", apicurioArtifact.Spec.Id, "type", apicurioArtifact.Spec.Type)
+
+	// Content validation
+	if apicurioArtifact.Spec.Content == "" && apicurioArtifact.Spec.ExternalContent == "" {
+		log.Error(&ValidationContentError{}, "Artifact has content or externalContent not defined")
+		return ctrl.Result{}, &ValidationContentError{}
+	}
+
+	// Create Apicurio registry client
+	log.Info("Using Apicurio registry endpoint ", "endpoint", apicurioArtifact.Spec.RegistryApiEndpoint)
 	registryApiClient, err := RegistryApi.NewClientWithResponses(apicurioArtifact.Spec.RegistryApiEndpoint)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	// Update artifact with POST /artifacts
+	value, exists := apicurioArtifact.Annotations["apicurio.artifact.operator/force-delete"]
+	if exists && value == "true" {
+		log.Info("Artifact will be deleted as it's forced.")
+		_, err := registryApiClient.DeleteArtifact(ctx, apicurioArtifact.Spec.Id)
+		if err != nil {
+			log.Error(err, "Artifact deleted in registry failed.")
+			return ctrl.Result{}, err
+		}
+		log.Info("Artifact deleted in registry.")
+		return ctrl.Result{}, nil
+	}
 
+	// Create artifact with RETURN_OR_UPDATE
 	var ifExists = "RETURN_OR_UPDATE"
 	var artifactType = string(apicurioArtifact.Spec.Type)
-	response, err := registryApiClient.CreateArtifactWithBodyWithResponse(ctx, &RegistryApi.CreateArtifactParams{
+
+	var content = apicurioArtifact.Spec.Content
+	if content == "" {
+		resp, err := http.Get(apicurioArtifact.Spec.ExternalContent)
+		if err != nil {
+			log.Error(err, "Could not load content ", "content", apicurioArtifact.Spec.ExternalContent)
+			return ctrl.Result{}, err
+		}
+		defer resp.Body.Close()
+		err = WrapRegistryApiIssues(err, resp)
+		if err != nil {
+			log.Error(err, "Could not load content", "content", apicurioArtifact.Spec.ExternalContent)
+			return ctrl.Result{}, err
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Error(err, "Could not convert response body for", apicurioArtifact.Spec.ExternalContent)
+			return ctrl.Result{}, err
+		}
+		content = string(body)
+	}
+
+	responseArtifact, err := registryApiClient.CreateArtifactWithBodyWithResponse(ctx, &RegistryApi.CreateArtifactParams{
 		IfExists:              &ifExists,
 		XRegistryArtifactType: &artifactType,
 		XRegistryArtifactId:   &apicurioArtifact.Spec.Id,
-	}, apicurioArtifact.Spec.ContentType, strings.NewReader(apicurioArtifact.Spec.Content))
+	}, apicurioArtifact.Spec.ContentType, strings.NewReader(content))
+	err = WrapRegistryApiIssues(err, responseArtifact.HTTPResponse)
 	if err != nil {
+		log.Error(err, "Could create or update artifact")
 		return ctrl.Result{}, err
 	}
+	log.Info("Artifact created or updated.", "version", responseArtifact.JSON200.Version)
 
 	// Update metadata
-	_, err = registryApiClient.UpdateArtifactVersionMetaDataWithResponse(ctx, response.JSON200.Id, int(response.JSON200.Version), RegistryApi.UpdateArtifactVersionMetaDataJSONRequestBody{
+	responseMetadata, err := registryApiClient.UpdateArtifactVersionMetaDataWithResponse(ctx, responseArtifact.JSON200.Id, int(responseArtifact.JSON200.Version), RegistryApi.UpdateArtifactVersionMetaDataJSONRequestBody{
 		Description: &apicurioArtifact.Spec.Description,
 		Labels:      &apicurioArtifact.Spec.Labels,
 		Name:        &apicurioArtifact.Spec.Name,
@@ -91,59 +139,100 @@ func (r *ApicurioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			AdditionalProperties: apicurioArtifact.Spec.Properties,
 		},
 	})
+	err = WrapRegistryApiIssues(err, responseMetadata.HTTPResponse)
 	if err != nil {
+		log.Error(err, "Could update artifact metadata")
 		return ctrl.Result{}, err
 	}
+	log.Info("Metadata for artifact updated")
 
 	// Update state if configured
 	if &apicurioArtifact.Spec.State != nil {
-		registryApiClient.UpdateArtifactVersionState(ctx, response.JSON200.Id, int(response.JSON200.Version), RegistryApi.UpdateArtifactVersionStateJSONRequestBody{
-			State: RegistryApi.ArtifactState(apicurioArtifact.Spec.State),
-		})
+		responseVersionMetaData, err := registryApiClient.GetArtifactVersionMetaDataWithResponse(ctx, responseArtifact.JSON200.Id, int(responseArtifact.JSON200.Version))
+		err = WrapRegistryApiIssues(err, responseVersionMetaData.HTTPResponse)
+		if err != nil {
+			log.Error(err, "Could get artifact version metadata")
+			return ctrl.Result{}, err
+		}
+
+		if *responseVersionMetaData.JSON200.State != RegistryApi.ArtifactState(apicurioArtifact.Spec.State) {
+			responseStateUpdate, err := registryApiClient.UpdateArtifactVersionState(ctx, responseArtifact.JSON200.Id, int(responseArtifact.JSON200.Version), RegistryApi.UpdateArtifactVersionStateJSONRequestBody{
+				State: RegistryApi.ArtifactState(apicurioArtifact.Spec.State),
+			})
+			err = WrapRegistryApiIssues(err, responseStateUpdate)
+			if err != nil {
+				log.Error(err, "Could update artifact version state")
+				return ctrl.Result{}, err
+			}
+			log.Info("State for artifact updated", "state", apicurioArtifact.Spec.State)
+		}
 	}
 
 	// Get artifact rules current configrtion
 	if &apicurioArtifact.Spec.RuleValidity != nil || &apicurioArtifact.Spec.RuleCompatibility != nil {
-		artifactRules, err := registryApiClient.ListArtifactRulesWithResponse(ctx, response.JSON200.Id)
+		responseArtifactRules, err := registryApiClient.ListArtifactRulesWithResponse(ctx, responseArtifact.JSON200.Id)
+		err = WrapRegistryApiIssues(err, responseArtifactRules.HTTPResponse)
 		if err != nil {
+			log.Error(err, "Could update artifact version state")
 			return ctrl.Result{}, err
 		}
 
 		// Update rule VALIDITY if configured
 		if &apicurioArtifact.Spec.RuleValidity != nil {
 			var ruleType = RegistryApi.RuleType_VALIDITY
-			if ContainsRuleType(*artifactRules.JSON200, ruleType) {
-				registryApiClient.UpdateArtifactRuleConfig(ctx, response.JSON200.Id, string(ruleType), RegistryApi.UpdateArtifactRuleConfigJSONRequestBody{
+			if ContainsRuleType(*responseArtifactRules.JSON200, ruleType) {
+				response, err := registryApiClient.UpdateArtifactRuleConfig(ctx, responseArtifact.JSON200.Id, string(ruleType), RegistryApi.UpdateArtifactRuleConfigJSONRequestBody{
 					Config: string(apicurioArtifact.Spec.RuleValidity),
 					Type:   &ruleType,
 				})
+				err = WrapRegistryApiIssues(err, response)
+				if err != nil {
+					log.Error(err, "Could update artifact rule VALIDITY")
+					return ctrl.Result{}, err
+				}
 			} else {
-				registryApiClient.CreateArtifactRule(ctx, response.JSON200.Id, RegistryApi.CreateArtifactRuleJSONRequestBody{
+				response, err := registryApiClient.CreateArtifactRule(ctx, responseArtifact.JSON200.Id, RegistryApi.CreateArtifactRuleJSONRequestBody{
 					Config: string(apicurioArtifact.Spec.RuleValidity),
 					Type:   &ruleType,
 				})
+				err = WrapRegistryApiIssues(err, response)
+				if err != nil {
+					log.Error(err, "Could create artifact rule VALIDITY")
+					return ctrl.Result{}, err
+				}
 			}
-
+			log.Info("Rule VALIDITY for artifact updated", "VALIDITY", apicurioArtifact.Spec.RuleValidity)
 		}
 
-		// Update rule VALIDITY if configured
+		// Update rule COMPATIBILITY if configured
 		if &apicurioArtifact.Spec.RuleCompatibility != nil {
 			var ruleType = RegistryApi.RuleType_COMPATIBILITY
-			if ContainsRuleType(*artifactRules.JSON200, ruleType) {
-				registryApiClient.UpdateArtifactRuleConfig(ctx, response.JSON200.Id, string(ruleType), RegistryApi.UpdateArtifactRuleConfigJSONRequestBody{
+			if ContainsRuleType(*responseArtifactRules.JSON200, ruleType) {
+				response, err := registryApiClient.UpdateArtifactRuleConfig(ctx, responseArtifact.JSON200.Id, string(ruleType), RegistryApi.UpdateArtifactRuleConfigJSONRequestBody{
 					Config: string(apicurioArtifact.Spec.RuleCompatibility),
 					Type:   &ruleType,
 				})
+				err = WrapRegistryApiIssues(err, response)
+				if err != nil {
+					log.Error(err, "Could create artifact rule COMPATIBILITY")
+					return ctrl.Result{}, err
+				}
 			} else {
-				registryApiClient.CreateArtifactRule(ctx, response.JSON200.Id, RegistryApi.CreateArtifactRuleJSONRequestBody{
+				response, err := registryApiClient.CreateArtifactRule(ctx, responseArtifact.JSON200.Id, RegistryApi.CreateArtifactRuleJSONRequestBody{
 					Config: string(apicurioArtifact.Spec.RuleCompatibility),
 					Type:   &ruleType,
 				})
+				err = WrapRegistryApiIssues(err, response)
+				if err != nil {
+					log.Error(err, "Could create artifact rule COMPATIBILITY")
+					return ctrl.Result{}, err
+				}
 			}
+			log.Info("Rule COMPATIBILITY for artifact updated", "COMPATIBILITY", apicurioArtifact.Spec.RuleCompatibility)
 		}
-
 	}
 
+	log.Info("Reconcile done for Artifact successfully")
 	return ctrl.Result{}, nil
 }
 
@@ -161,4 +250,28 @@ func ContainsRuleType(a []RegistryApi.RuleType, x RegistryApi.RuleType) bool {
 		}
 	}
 	return false
+}
+
+type ValidationContentError struct{}
+
+func (m *ValidationContentError) Error() string {
+	return "You have to provide the filed content or externalContent"
+}
+
+type BadRequestError struct {
+	message string
+}
+
+func (m *BadRequestError) Error() string {
+	return m.message
+}
+
+func WrapRegistryApiIssues(err error, response *http.Response) error {
+	if err != nil {
+		return err
+	}
+	if response.StatusCode >= 400 {
+		return &BadRequestError{response.Status}
+	}
+	return nil
 }

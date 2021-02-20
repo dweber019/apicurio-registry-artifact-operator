@@ -79,9 +79,13 @@ type ApicurioSpec struct {
 	// +kubebuilder:validation:Required
 	ContentType string `json:"contentType,omitempty"`
 
-	// The content of the artifact, for an openAPI would be json
-	// +kubebuilder:validation:Required
+	// The content of the artifact, for an openAPI would be json (content or externalContent is required)
+	// +kubebuilder:validation:Optional
 	Content string `json:"content"`
+
+	// The content of the artifact, provide a valid URL to the content (content or externalContent is required)
+	// +kubebuilder:validation:Optional
+	ExternalContent string `json:"externalContent"`
 }
 
 // +kubebuilder:validation:Enum=AVRO;PROTOBUF;PROTOBUF_FD;JSON;KCONNECT;OPENAPI;ASYNCAPI;GRAPHQL;WSDL;XSD
