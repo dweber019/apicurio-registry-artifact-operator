@@ -18,7 +18,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	RegistryApi "github.com/dweber019/apicurio-registry-artifact-operator/registry_api"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -65,23 +69,54 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "446af786.w3tec.ch",
-	})
+	watchNamespace, err := getWatchNamespace()
+	if err != nil {
+		setupLog.Error(err, "unable to get WatchNamespace, "+
+			"the manager will watch and manage resources in all namespaces")
+	}
+
+	options := ctrl.Options{
+		Scheme:             scheme,
+		MetricsBindAddress: metricsAddr,
+		Port:               9443,
+		LeaderElection:     enableLeaderElection,
+		LeaderElectionID:   "446af786.w3tec.ch",
+		Namespace:          watchNamespace, // namespaced-scope when the value is not an empty string
+	}
+
+	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
+	if strings.Contains(watchNamespace, ",") {
+		setupLog.Info("manager set up with multiple namespaces", "namespaces", watchNamespace)
+		// configure cluster-scoped with MultiNamespacedCacheBuilder
+		options.Namespace = ""
+		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(watchNamespace, ","))
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
+	apicurioEndpoint, err := getApicurioEndpoint()
+	if err != nil {
+		setupLog.Error(err, "unable to get Apicurio endpoint, "+
+			"this is fatal, please define env APICURIO_ENDPOINT")
+		os.Exit(1)
+	}
+
+	setupLog.Info("Using Apicurio registry endpoint ", "endpoint", apicurioEndpoint)
+	registryApiClient, err := RegistryApi.NewClientWithResponses(apicurioEndpoint)
+	if err != nil {
+		setupLog.Error(err, "unable to create Apicurio client")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.ApicurioReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Apicurio"),
-		Scheme: mgr.GetScheme(),
+		Client:         mgr.GetClient(),
+		Log:            ctrl.Log.WithName("controllers").WithName("Apicurio"),
+		Scheme:         mgr.GetScheme(),
+		ApicurioClient: *registryApiClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Apicurio")
 		os.Exit(1)
@@ -102,4 +137,23 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func getWatchNamespace() (string, error) {
+	var watchNamespaceEnvVar = "WATCH_NAMESPACE"
+	ns, found := os.LookupEnv(watchNamespaceEnvVar)
+	if !found {
+		return "", fmt.Errorf("%s must be set", watchNamespaceEnvVar)
+	}
+	return ns, nil
+}
+
+func getApicurioEndpoint() (string, error) {
+	var apicurioEndpointEnvVar = "APICURIO_ENDPOINT"
+
+	ns, found := os.LookupEnv(apicurioEndpointEnvVar)
+	if !found {
+		return "", fmt.Errorf("%s must be set", apicurioEndpointEnvVar)
+	}
+	return ns, nil
 }

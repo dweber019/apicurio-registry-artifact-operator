@@ -35,8 +35,9 @@ import (
 // ApicurioReconciler reconciles a Apicurio object
 type ApicurioReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log            logr.Logger
+	Scheme         *runtime.Scheme
+	ApicurioClient RegistryApi.ClientWithResponses
 }
 
 // +kubebuilder:rbac:groups=artifact.w3tec.ch,resources=apicurios,verbs=get;list;watch;create;update;patch;delete
@@ -54,6 +55,7 @@ type ApicurioReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
 func (r *ApicurioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("apicurio", req.NamespacedName)
+	registryApiClient := r.ApicurioClient
 
 	apicurioArtifact := &artifactv1alpha1.Apicurio{}
 	err := r.Get(ctx, req.NamespacedName, apicurioArtifact)
@@ -72,13 +74,6 @@ func (r *ApicurioReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if apicurioArtifact.Spec.Content == "" && apicurioArtifact.Spec.ExternalContent == "" {
 		log.Error(&ValidationContentError{}, "Artifact has content or externalContent not defined")
 		return ctrl.Result{}, &ValidationContentError{}
-	}
-
-	// Create Apicurio registry client
-	log.Info("Using Apicurio registry endpoint ", "endpoint", apicurioArtifact.Spec.RegistryApiEndpoint)
-	registryApiClient, err := RegistryApi.NewClientWithResponses(apicurioArtifact.Spec.RegistryApiEndpoint)
-	if err != nil {
-		return ctrl.Result{}, err
 	}
 
 	value, exists := apicurioArtifact.Annotations["apicurio.artifact.operator/force-delete"]

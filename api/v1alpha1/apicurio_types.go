@@ -27,10 +27,6 @@ import (
 // +kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.type`
 // +kubebuilder:printcolumn:name="Registry",type=string,JSONPath=`.spec.registryApiEndpoint`
 type ApicurioSpec struct {
-	// The Registry API url including the /api or even versions
-	// +kubebuilder:validation:Required
-	RegistryApiEndpoint string `json:"registryApiEndpoint"`
-
 	// The artifact id which will be the reference point for all operations towards the Registry API
 	// +kubebuilder:validation:Required
 	Id string `json:"artifactId"`

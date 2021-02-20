@@ -3,7 +3,6 @@ kind: Apicurio
 metadata:
   name: artifact-openapi-sample
 spec:
-  registryApiEndpoint: http://192.168.99.102:30199/api
   artifactId: artifact-openapi-sample
   name: pets-api
   description: "super pets api"

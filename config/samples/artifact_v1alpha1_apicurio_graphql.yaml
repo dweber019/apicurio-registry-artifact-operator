@@ -3,7 +3,6 @@ kind: Apicurio
 metadata:
   name: artifact-graphql-sample
 spec:
-  registryApiEndpoint: http://192.168.99.102:30199/api
   artifactId: artifact-graphql-sample
   name: swars-graphql
   description: "super graphql"

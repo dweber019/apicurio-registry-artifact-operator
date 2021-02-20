@@ -25,7 +25,8 @@ If you delete a CRD the operator will not delete the artifact as it's possible t
 If you like physically delete the artifact you can do so by setting the metadata annotation `apicurio.artifact.operator/force-delete: "true"`.
 
 ## Development
-For development you should use `minikube` or any other possible kubernetes compatible implementation, as advised by the operator-sdk framework.
+For development you should use `minikube` or any other possible kubernetes compatible implementation, as advised by the operator-sdk framework.  
+Second you have to define the Apicurio registry endpoint with a environment variable called `export APICURIO_ENDPOINT=http://192.168.99.102:30199/api`.
 
 ### Update the Apicurio Registry client SDK
 In install the [oapi-codegen](https://github.com/deepmap/oapi-codegen). For example by running ´go get github.com/deepmap/oapi-codegen/cmd/oapi-codegen´.  
@@ -55,15 +56,16 @@ To access the UI you can open a tunnel to the service. In minikube you do so wit
 
 Don't use this in production!!! Use something like the [Registry operator](https://operatorhub.io/operator/apicurio-registry) instead.
 
-### Deployment
+## Deployment
 To update the docker image use this command
 ```
 make docker-build docker-push IMG=docker.io/dweber019/apicurio-registry-artifact-operator:v0.0.1
 ```
 After this you can run with
 ```
-make deploy IMG=docker.io/dweber019/memcached-operator:v0.0.1
+make deploy IMG=docker.io/dweber019/apicurio-registry-artifact-operator:v0.0.1
 ```
+Don't forget to set env `APICURIO_ENDPOINT`.
 
 ## Useful links
 - [Kubebilder](https://book.kubebuilder.io)

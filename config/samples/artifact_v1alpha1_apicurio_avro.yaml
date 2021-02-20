@@ -3,7 +3,6 @@ kind: Apicurio
 metadata:
   name: artifact-avro-sample
 spec:
-  registryApiEndpoint: http://192.168.99.102:30199/api
   artifactId: artifact-avro-sample
   name: pets-avro
   description: "super pets avro"

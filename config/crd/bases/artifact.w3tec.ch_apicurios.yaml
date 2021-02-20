@@ -70,9 +70,6 @@ spec:
                   type: string
                 description: And some arbitrary properties
                 type: object
-              registryApiEndpoint:
-                description: The Registry API url including the /api or even versions
-                type: string
               ruleCompatibility:
                 description: This will define the compatibility rule
                 enum:
@@ -122,7 +119,6 @@ spec:
             required:
             - artifactId
             - name
-            - registryApiEndpoint
             - type
             - username
             type: object

@@ -3,7 +3,6 @@ kind: Apicurio
 metadata:
   name: artifact-asyncapi-sample
 spec:
-  registryApiEndpoint: http://192.168.99.102:30199/api
   artifactId: artifact-asyncapi-sample
   name: signup-asyncapi
   description: "super asyncapi"
