@@ -1,4 +1,6 @@
 # The Apicurio registry artifact operator
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdweber019%2Fapicurio-registry-artifact-operator.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdweber019%2Fapicurio-registry-artifact-operator?ref=badge_shield)
+
 ## Why
 This operator aims to provide Kubernetes CRD's to manage the lifecycle of artifacts with meta data and versions.  
 This will enable DevOps teams to manage all artifacts provided by the Apicurio Registry with GitOps and can build process based on it.
@@ -72,3 +74,7 @@ Don't forget to set env `APICURIO_ENDPOINT`.
 - [Operator tutorial](https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/)
 - [Apicurio API reference](https://www.apicur.io/registry/docs/apicurio-registry/1.3.3.Final/assets-attachments/registry-rest-api.htm)
 - [Openapi generator for golang](https://github.com/deepmap/oapi-codegen)
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdweber019%2Fapicurio-registry-artifact-operator.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fdweber019%2Fapicurio-registry-artifact-operator?ref=badge_large)
